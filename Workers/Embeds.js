@@ -1,268 +1,180 @@
-const db      = require('./DB.js');           //Sqlite3 DB functions
-var pulldata  = require('./PullData.js');     //DelDot JSON feeds
-
 module.exports = {
-  //Get active closures from the DB and embed them to Discord
-  embedAdvisories: function embedAdvisories(closureChannel) {
-    try{
-    db.db.each("SELECT eventID, desc, timestamp, status, link, lat, long, address, type, wherename FROM closures WHERE status='Advisory' AND posted='FALSE';", function(err,row) {
-      if (err) {
-        throw err;
-      }
-      var wmelink="https://www.waze.com/en-US/editor?env=usa&lon=" + row.long + "&lat=" + row.lat + "&zoom=6&marker=true";
-      var lmlink="https://www.waze.com/livemap?lon=" + row.long + "&lat=" + row.lat + "&zoom=17";
-      var applink="https://www.waze.com/ul?ll=" + row.lat + "," + row.long;
-      if (row.address == "null") {
-        var wherename = row.wherename;
+	DEAdvisoryClose: function CloseEmbed(d) {
+      var wmelink=`https://www.waze.com/en-US/editor?env=usa&lon=${d.where.lon}&lat=${d.where.lat}&zoom=6&marker=true`;
+      var lmlink=`https://www.waze.com/livemap?lon=${d.where.lon}&lat=${d.where.lat}&zoom=17`;
+      var applink=`https://www.waze.com/ul?ll=${d.where.lat},${d.where.lon}`;
+      if (d.where.address.address1 != null) {
+			var location = d.where.address.address1;
       } else { 
-        var wherename = row.address; 
+			var location = d.where.county.name; 
       }
-      if (row.type == "Construction") {
-        var colorcode = "0xFF6B00";
+      if (d.type.name == "Construction") {
+			var colorcode = "0xFF6B00";
       } else {
-        var colorcode = "0xFF0000";
+			var colorcode = "0xFF0000";
       }
-      var friendlydate = new Date(row.timestamp);
-      const exampleEmbed = {
-        color: colorcode,
-        title: row.type + " near " + wherename,
-        url: row.link,
-        author: {
-          name: 'DelDot DataFeed (Advisory Closure)',
-          icon_url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
-          url: 'https://deldot.gov',
-        },
-        //description: row.desc,
-        thumbnail: {
-          url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
-        },
-        fields: [
-          {
-            name: 'Reason',
-            value: row.desc,
-          },
-          {
-            name: 'Location',
-            value: `[WME Link](${wmelink}) | [Livemap Link](${lmlink}) | [App Link](${applink})`,
-          },
-          {
-            name: '\u200b',
-            value: '\u200b',
-            inline: false,
-          },
-        ],
-        timestamp: friendlydate.toLocaleString(),
-        footer: {
-          text: "Event " + row.eventID + " updated at ",
-          //icon_url: 'https://i.imgur.com/wSTFkRM.png',
-        },
-      };
-      closureChannel.send({ embed: exampleEmbed });
-      db.db.run("UPDATE closures SET posted='TRUE' WHERE eventID=" + `"${row.eventID}"`);
-      });
-    }
-    catch (e) {
-    console.log(e);
-    db.db.run(`INSERT INTO errlog (timestamp, err) VALUES ("${new Date()}","${e}")`);
-  }
-  },
-  //Get scheduled closures from the DB and embed them to Discord
-  embedSchedules: function embedSchedules(closureChannel) {
-    try{
-    db.db.each("SELECT eventID, title, desc, starttime, county, lat, long FROM closures WHERE status='Scheduled' AND posted='FALSE'", function(err,row) {
-      if (err) {
-        throw err;
-      }
-      var wmelink="https://www.waze.com/en-US/editor?env=usa&lon=" + row.long + "&lat=" + row.lat + "&zoom=6&marker=true";
-      var lmlink="https://www.waze.com/livemap?lon=" + row.long + "&lat=" + row.lat + "&zoom=17";
-      var applink="https://www.waze.com/ul?ll=" + row.lat + "," + row.long;
-      const exampleEmbed = {
-        color: 0xffff00,
-        title: row.title,
-        //url: row.link,
-        author: {
-          name: 'DelDot DataFeed (Scheduled Closure)',
-          icon_url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
-          url: 'https://deldot.gov',
-        },
-        //description: row.desc,
-        thumbnail: {
-          url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
-        },
-        fields: [
-          {
-            name: 'Reason',
-            value: row.desc,
-          },
-          {
-            name: 'Location',
-            value: `[WME Link](${wmelink}) | [Livemap Link](${lmlink}) | [App Link](${applink})`,
-          },
-          {
-            name: 'Dates',
-            value: row.starttime,
-          },
-          {
-            name: 'County',
-            value: row.county,
-          },
-          {
-            name: '\u200b',
-            value: '\u200b',
-            inline: false,
-          },
-        ],
-        footer: {
-          text: "Scheduled Closure " + row.eventID,
-          //icon_url: 'https://i.imgur.com/wSTFkRM.png',
-        },
-      };
-      closureChannel.send({ embed: exampleEmbed });
-      db.db.run("UPDATE closures SET posted='TRUE' WHERE eventID=" + `"${row.eventID}"`);
-    });
-    }
-    catch (e) {
-    console.log(e);
-    db.db.run(`INSERT INTO errlog (timestamp, err) VALUES ("${new Date()}","${e}")`);
-  }
-  },
-  //Update the advisory closures in the database - Remove the ones that are no longer in DelDot JSON file
-  updateAdvisories: function updateAdvisories(closureChannel) {
-    try {
-    db.db.each("SELECT eventID, title, desc, timestamp, status, link, lat, long, address, type, wherename FROM closures WHERE status='Advisory'", function(err, row) {
-    if (err) {
-      throw err;
-    }
-    var closureindex = 0;
-    var closurevalid = false;
-    while (closureindex < pulldata.advisoryCount) {
-      if (row.eventID == pulldata.advisoryResponse.advisories[closureindex].id) {
-        closurevalid = true; //If closure is valid, do not remove from DB
-      }
-      closureindex++;
-      }
-    if (!closurevalid) {
-      var wmelink="https://www.waze.com/en-US/editor?env=usa&lon=" + row.long + "&lat=" + row.lat + "&zoom=6&marker=true";
-      var lmlink="https://www.waze.com/livemap?lon=${row.long}&lat=${row.lat}&zoom=17";
-      var applink="https://www.waze.com/ul?ll=" + row.lat + "," + row.long;
-      if (row.address == "null") {
-        var wherename = row.wherename;
+		var closeembed = {
+			"embed": {
+				color: colorcode,
+				title: `${d.type.name} near ${location}`,
+				url: d.published.linkbackUrl,
+				author: {
+					name: 'DelDot DataFeed (Advisory Closure)',
+					icon_url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
+					url: 'https://deldot.gov',
+				},
+				//description: row.desc,
+				thumbnail: {
+					url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
+				},
+				fields: [
+					{
+						name: 'Reason',
+						value: d.where.location,
+					},
+					{
+						name: 'Location',
+						value: `[WME Link](${wmelink}) | [Livemap Link](${lmlink}) | [App Link](${applink})`,
+					},
+				],
+				timestamp: new Date(d.timestamp).toLocaleString(),
+				footer: {
+					text: "Event " + d.id + " updated at ",
+				},
+			}
+		};
+		return closeembed;
+	},
+	DEAdvisoryOpen: function OpenEmbed(d) {
+      var wmelink=`https://www.waze.com/en-US/editor?env=usa&lon=${d.Lon}&lat=${d.Lat}&zoom=6&marker=true`;
+      var lmlink=`https://www.waze.com/livemap?lon=${d.Lon}&lat=${d.Lat}&zoom=17`;
+      var applink=`https://www.waze.com/ul?ll=${d.Lat},${d.Lon}`;
+      if (d.Address != null) {
+			var location = d.Address;
       } else { 
-        var wherename = row.address; 
+			var location = d.County; 
       }
-      const exampleEmbed = {
-        color: 0x00ff00,
-        title: "Cleared! - " + row.type + " near " + wherename,
-        url: row.link,
-        author: {
-          name: 'DelDot DataFeed (Advisory Closure)',
-          icon_url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
-          url: 'https://deldot.gov',
-        },
-        //description: row.desc,
-        thumbnail: {
-          url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
-        },
-        fields: [
-          {
-            name: 'Reason',
-            value: row.desc,
-          },
-          {
-            name: 'Location',
-            value: `[WME Link](${wmelink}) | [Livemap Link](${lmlink}) | [App Link](${applink})`,
-          },
-          {
-            name: '\u200b',
-            value: '\u200b',
-            inline: false,
-          },
-        ],
-        timestamp: new Date(),
-        footer: {
-          text: "Event " + row.eventID + " cleared at ",
-          //icon_url: 'https://i.imgur.com/wSTFkRM.png',
-        },
-      };
-      closureChannel.send({ embed: exampleEmbed });
-      console.log(row.eventID + " Deleted!");
-      db.db.run("DELETE FROM closures WHERE eventID=" + row.eventID);
+      if (d.AdvisoryType == "Construction") {
+			var colorcode = "0xFF6B00";
+      } else {
+			var colorcode = "0xFF0000";
       }
-    });
-    }
-    catch (e) {
-    console.log(e);
-    db.db.run(`INSERT INTO errlog (timestamp, err) VALUES ("${new Date()}","${e}")`);
-    }
-  },
-  //Update the scheduled closures in the database - Remove the ones that are no longer in DelDot JSON file
-  updateSchedules: function updateSchedules(closureChannel) {
-    try {
-    db.db.each("SELECT eventID, title, desc, county, lat, long FROM closures WHERE status='Scheduled'", function(err, row) {
-    if (err) {
-      throw err;
-    }
-    //var closureChannel = client.channels.cache.find(channel => channel.id === "726156388505747539");
-    var closureindex = 0;
-    var closurevalid = false;
-    while (closureindex < pulldata.scheduleCount) {
-        if (row.eventID == pulldata.scheduleResponse[closureindex].str.strId) {
-          //closureChannel.send(row.eventID + " : " + advisoryResponse.advisories[closureindex].id);
-          closurevalid = true; //If closure is valid, do not remove from DB
-        }
-      closureindex++;
-      }
-    if (!closurevalid) {
-      var wmelink="https://www.waze.com/en-US/editor?env=usa&lon=" + row.long + "&lat=" + row.lat + "&zoom=6&marker=true";
-      var lmlink="https://www.waze.com/livemap?lon=" + row.long + "&lat=" + row.lat + "&zoom=17";
-      var applink="https://www.waze.com/ul?ll=" + row.lat + "," + row.long;
-      const exampleEmbed = {
-        color: 0x00ff00,
-        title: "Cleared! - " + row.title,
-        //url: row.link,
-        author: {
-          name: 'DelDot DataFeed (Schedule Closure)',
-          icon_url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
-          url: 'https://deldot.gov',
-        },
-        //description: row.desc,
-        thumbnail: {
-          url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
-        },
-        fields: [
-          {
-            name: 'Reason',
-            value: row.desc,
-          },
-          {
-            name: 'Location',
-            value: `[WME Link](${wmelink}) | [Livemap Link](${lmlink}) | [App Link](${applink})`,
-          },
-          {
-            name: 'County',
-            value: row.county,
-          },
-          {
-            name: '\u200b',
-            value: '\u200b',
-            inline: false,
-          },
-        ],
-        timestamp: new Date(),
-        footer: {
-          text: "Closure " + row.eventID + " cleared at ",
-          //icon_url: 'https://i.imgur.com/wSTFkRM.png',
-        },
-      };
-      closureChannel.send({ embed: exampleEmbed });
-      console.log(row.eventID + " Deleted!");
-      db.db.run("DELETE FROM closures WHERE eventID=" + row.eventID);
-      }
-    });
-    }
-    catch (e) {
-    console.log(e);
-    db.db.run(`INSERT INTO errlog (timestamp, err) VALUES ("${new Date()}","${e}")`);
-    }
-  }
-}
+		var openembed = {
+			"embed": {
+				color: 0x00ff00,
+				title: `Cleared! - ${d.EventType} near ${location}`,
+				url: d.Link,
+				author: {
+					name: 'DelDot DataFeed (Advisory Closure)',
+					icon_url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
+					url: 'https://deldot.gov',
+				},
+				//description: row.desc,
+				thumbnail: {
+					url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
+				},
+				fields: [
+					{
+						name: 'Reason',
+						value: d.Desc.replace("IS CLOSED","*was* CLOSED"),
+					},
+					{
+						name: 'Location',
+						value: `[WME Link](${wmelink}) | [Livemap Link](${lmlink}) | [App Link](${applink})`,
+					},
+				],
+				timestamp: new Date().toLocaleString(),
+				footer: {
+					text: `Event ${d.EventID} updated at`,
+				},
+			}
+		};
+		return openembed;
+	},
+	DEScheduleClose: function CloseEmbed(d) {
+      var wmelink=`https://www.waze.com/en-US/editor?env=usa&lon=${d.longitude}&lat=${d.latitude}&zoom=6&marker=true`;
+      var lmlink=`https://www.waze.com/livemap?lon=${d.longitude}&lat=${d.latitude}&zoom=17`;
+      var applink=`https://www.waze.com/ul?ll=${d.latitude},${d.longitude}`;
+		var closeembed = {
+			"embed": {
+				color: 0xffff00,
+				title: d.title,
+				url: `https://deldot.gov/About/news/index.shtml?dc=release&id=${d.releaseId}`,
+				author: {
+					name: 'DelDot DataFeed (Scheduled Closure)',
+					icon_url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
+					url: 'https://deldot.gov',
+				},
+				thumbnail: {
+					url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
+				},
+				fields: [
+					{
+						name: 'Reason',
+						value: d.construction,
+					},
+					{
+						name: 'Location',
+						value: `[WME Link](${wmelink}) | [Livemap Link](${lmlink}) | [App Link](${applink})`,
+					},
+				   {
+						name: 'Dates',
+						value: d.startDate,
+					},
+					{
+						name: 'County',
+						value: d.county,
+					},
+				],
+				timestamp: new Date(d.timestamp).toLocaleString(),
+				footer: {
+					text: "Scheduled Closure " + d.strId,
+				},
+			}
+		};
+		return closeembed;
+	},
+	DEScheduleOpen: function OpenEmbed(d) {
+      var wmelink=`https://www.waze.com/en-US/editor?env=usa&lon=${d.Lon}&lat=${d.Lat}&zoom=6&marker=true`;
+      var lmlink=`https://www.waze.com/livemap?lon=${d.Lon}&lat=${d.Lat}&zoom=17`;
+      var applink=`https://www.waze.com/ul?ll=${d.Lat},${d.Lon}`;
+		var openembed = {
+			"embed": {
+				color: 0x00ff00,
+				title: d.Address,
+				url: `https://deldot.gov/About/news/index.shtml?dc=release&id=${d.Link}`,
+				author: {
+					name: 'DelDot DataFeed (Scheduled Closure)',
+					icon_url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
+					url: 'https://deldot.gov',
+				},
+				thumbnail: {
+					url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
+				},
+				fields: [
+					{
+						name: 'Reason',
+						value: d.Desc,
+					},
+					{
+						name: 'Location',
+						value: `[WME Link](${wmelink}) | [Livemap Link](${lmlink}) | [App Link](${applink})`,
+					},
+				   {
+						name: 'Dates',
+						value: d.TimeStamp,
+					},
+					{
+						name: 'County',
+						value: d.County.replace(" County",""),
+					},
+				],
+				timestamp: new Date(),
+				footer: {
+					text: "Scheduled Closure " + d.EventID + " cleared at ",
+				},
+			}
+		};
+		return openembed;
+	}
+};
