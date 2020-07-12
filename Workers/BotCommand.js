@@ -1,7 +1,7 @@
 const sql = require('./DB.js');              //Sqlite3 DB functions
 
 module.exports = {
-  botComm: function botComm(client,message,closureChannel) {
+  botComm: function botComm(client,message) {
     if ((message.author.id == "356869234942410753") || (message.author.id == "211119394992947200")) { //phuz and doctorblah IDs
       if (message.content == "!help") {
 			message.channel.send("My commands are:\n!ping - See if I'm alive\n!showsql - Show current records in DB\n!purge - Clear all DB records\n!reload - Reload Modules\n!sql [SQL STATEMENT] - Execute custom SQL statement");
@@ -10,7 +10,7 @@ module.exports = {
 			message.author.send("phuz owns me.");
       }
       if (message.content.includes("!sql")) {
-			customSQLcommand(message,closureChannel);
+			customSQLcommand(message);
       }
 		if (message.content.includes("!1")) {
 			query='INSERT INTO closures (EventID, Desc, TimeStamp, EventType, AdvisoryType, Link, MessageID, Lat, Lon, Address, County) VALUES ("1234","test","2020-07-09T06:45:53Z","Advisory","Adv Test","http://www.waze.com","31337","40","-76","test address","Sussex")';
@@ -41,7 +41,7 @@ module.exports = {
   }
 }
   //Custom SQL Commands from Discord
-function customSQLcommand(message,closureChannel) {
+function customSQLcommand(message) {
   query = message.content.replace("!sql ", "");
   sql.db.all(query, function (err,row) {
     console.log(row.length);

@@ -1,9 +1,9 @@
 //Required Modules
-const fetch 		= require('node-fetch');
-const sql 			= require('../Workers/DB.js');
-const config 		= require('../config.json');
-const returndata 	= require('../Workers/ReturnData.js');
-const Embeds 		= require('../Workers/Embeds.js');
+const fetch = require('node-fetch');
+const sql = require('../Workers/DB.js');
+const config = require('../config.json');
+const returndata = require('../Workers/ReturnData.js');
+const Embeds = require('../Workers/Embeds.js');
 
 //DE specific variables & constants
 const advisoryURL = 'https://tmc.deldot.gov/json/advisory.json';
@@ -13,7 +13,8 @@ var scheduleCount;
 
 module.exports = { 
 	Pull: function Pull(bot) {
-		bot.DEChannel = bot.channels.cache.find(channel => channel.id === config.DE.Channel);
+		//bot.DEChannel = bot.channels.cache.find(channel => channel.id === config.DE.TestChannel);
+		bot.DEChannel = bot.channels.cache.find(channel => channel.id === config.DE.ClosureChannel);
 		//Fetch the DelDot Advisory Feed
 		fetch(advisoryURL)
 		.then(response => response.json())
@@ -39,7 +40,7 @@ module.exports = {
 				}
 				i++;
 			}
-			//Remove closures that are no longer in the DelDot Advisory Feed
+			//Update closures that were either updated or removed from the DelDot Feed
 			sql.db.each("SELECT * FROM closures WHERE EventType='Advisory'", function (err,row) {
 			if (err) {
 				throw err;
@@ -52,6 +53,13 @@ module.exports = {
 				entry.EventType = "Advisory";
 				if (row.EventID == entry.id) {
 					advisoryValid = true; //If closure is valid, do not remove from DB
+				}
+				if (row.EventID == entry.id) {
+					if (row.TimeStamp != entry.timestamp) {
+						bot.DEChannel.send(Embeds.DEAdvisoryClose(entry));
+						sql.db.run(`UPDATE closures SET TimeStamp="${entry.timestamp}",Desc="${entry.where.location}" WHERE EventID="${row.EventID}"`);
+						console.log(new Date().toLocaleString() + " " + row.EventID + " Updated!");
+					}
 				}
 				i++;
 			}
