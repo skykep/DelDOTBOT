@@ -15,11 +15,12 @@ client.on('ready', () => {
 
 client.on('message', function(message) {
 	//console.log(new Date() + " : " + message.author.username);
-	if ((message.channel.id === config.DE.ClosureChannel) || (message.channel.id === "728227545681494066") || (message.channel.id === "729735421818568774")) {
+	//console.log(message.channel.id);
+	if ((message.channel.id === config.DE.ClosureChannel) || (message.channel.id === "728227545681494066") || (message.channel.id === "729735421818568774") || (message.channel.id === "732698237445865525")) {
 		if (message.content === "!ping") {
 			message.channel.send("pong!");
 		}
-		if ((message.author.id === "356869234942410753") || (message.author.id === "211119394992947200")) {
+		if ((message.author.id === "356869234942410753") || (message.author.id === "211119394992947200") || (message.author.id === "300591409218584577")) {
 			if (message.content === "!reload") {
 				delete require.cache[require.resolve('./Workers/BotCommand.js')];
 				delete require.cache[require.resolve('./Workers/Embeds.js')];
@@ -40,18 +41,6 @@ client.on('message', function(message) {
 				botcmd.botComm(client, message);
 			}
 		}
-	}
-});
-
-client.on('messageReactionAdd', (reaction, user) => {
-	let message = reaction.message, emoji = reaction.emoji.name;
-	//console.log(message.author.id);
-	//console.log(message.id);
-	if (emoji === '❌') {
-		//message.channel.send("Thanks for closing it.");
-	}
-	if (emoji === "🖕") {          //:middle_finger:
-		message.channel.send("WTF?");
 	}
 });
 

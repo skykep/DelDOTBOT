@@ -24,7 +24,8 @@ module.exports = {
 			while (i < advisoryCount) {
 				let entry = advisoryResponse.advisories[i];
 				entry.EventType = "Advisory";
-				if ((entry.where.location.includes("LANE") === false) && (entry.where.location.includes("CLOS") === true) && (entry.where.location.includes("SHOULDER") === false) && (entry.where.location.includes("LN CLOS") === false)) {
+				entry.Status = "New";
+				if (((entry.where.location.includes("LANE") === false) && (entry.where.location.includes("CLOS") === true) && (entry.where.location.includes("SHOULDER") === false) && (entry.where.location.includes("LN CLOS") === false)) || (entry.where.location.includes("RAMP CLOS") === true)) {
 					sql.db.get(`SELECT * FROM closures WHERE EventID="${entry.id}"`, function (err,row) {
 					if (err) {
 						throw err;
@@ -52,13 +53,17 @@ module.exports = {
 				entry = advisoryResponse.advisories[i];
 				entry.EventType = "Advisory";
 				if (row.EventID == entry.id) {
-					advisoryValid = true; //If closure is valid, do not remove from DB
-				}
-				if (row.EventID == entry.id) {
-					if (row.TimeStamp != entry.timestamp) {
-						bot.DEChannel.send(Embeds.DEAdvisoryClose(entry));
-						sql.db.run(`UPDATE closures SET TimeStamp="${entry.timestamp}",Desc="${entry.where.location}" WHERE EventID="${row.EventID}"`);
-						console.log(new Date().toLocaleString() + " " + row.EventID + " Updated!");
+					if ((entry.where.location.includes("LANE CLOS") === false) && (entry.where.location.includes("LN CLOS") === false)) {
+						advisoryValid = true; //If closure is valid, do not remove from DB
+						//If timestamp and description change, send the update
+						if ((row.TimeStamp != entry.timestamp) && (row.Desc != entry.where.location)) {
+							entry.Status = "Updated";
+							bot.DEChannel.send(Embeds.DEAdvisoryClose(entry));
+							console.log(row);
+							console.log(entry);
+							sql.db.run(`UPDATE closures SET TimeStamp="${entry.timestamp}",Desc="${entry.where.location}" WHERE EventID="${row.EventID}"`);
+							console.log(new Date().toLocaleString() + " " + row.EventID + " Updated!");
+						}
 					}
 				}
 				i++;
@@ -80,7 +85,7 @@ module.exports = {
 			while (i < scheduleCount) {
 				let entry = scheduleResponse[i].str;
 				entry.EventType = "Scheduled";
-				if (entry.impactType == "Closure") {
+				if ((entry.impactType == "Closure") || ((entry.impactType == 'Restriction') && (entry.construction.toUpperCase().includes("AMP CLOS")) == true)) {
 					sql.db.get(`SELECT * FROM closures WHERE EventID="${entry.strId}"`, function (err,row) {
 					if (err) {
 						throw err;
@@ -119,7 +124,7 @@ module.exports = {
 			});
 		})
 		.catch(err => {
-		  console.log(err);
+		  console.log(new Date().toLocaleString() + err);
 		});
 	}
 };

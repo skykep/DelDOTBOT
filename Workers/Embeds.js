@@ -16,7 +16,7 @@ module.exports = {
 		var closeembed = {
 			"embed": {
 				color: colorcode,
-				title: `${d.type.name} near ${location}`,
+				title: `${d.Status} ${d.type.name} near ${location}`,
 				url: d.published.linkbackUrl,
 				author: {
 					name: 'DelDot DataFeed (Advisory Closure)',
@@ -62,7 +62,7 @@ module.exports = {
 		var openembed = {
 			"embed": {
 				color: 0x00ff00,
-				title: `Cleared! - ${d.EventType} near ${location}`,
+				title: `(OPEN) - ${d.AdvisoryType} near ${location}`,
 				url: d.Link,
 				author: {
 					name: 'DelDot DataFeed (Advisory Closure)',
@@ -116,7 +116,7 @@ module.exports = {
 				fields: [
 					{
 						name: 'Reason',
-						value: d.construction,
+						value: d.construction.replace(/<br \/>/g,""),
 					},
 					{
 						name: 'Location',

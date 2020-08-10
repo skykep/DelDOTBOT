@@ -1,8 +1,9 @@
 const sql = require('./DB.js');              //Sqlite3 DB functions
+const fetch = require('node-fetch');
 
 module.exports = {
   botComm: function botComm(client,message) {
-    if ((message.author.id == "356869234942410753") || (message.author.id == "211119394992947200")) { //phuz and doctorblah IDs
+    if ((message.author.id == "356869234942410753") || (message.author.id == "211119394992947200") || (message.author.id == "300591409218584577")) { //phuz and doctorblah and poncewattle IDs
       if (message.content == "!help") {
 			message.channel.send("My commands are:\n!ping - See if I'm alive\n!showsql - Show current records in DB\n!purge - Clear all DB records\n!reload - Reload Modules\n!sql [SQL STATEMENT] - Execute custom SQL statement");
       }
@@ -12,23 +13,23 @@ module.exports = {
       if (message.content.includes("!sql")) {
 			customSQLcommand(message);
       }
-		if (message.content.includes("!1")) {
-			query='INSERT INTO closures (EventID, Desc, TimeStamp, EventType, AdvisoryType, Link, MessageID, Lat, Lon, Address, County) VALUES ("1234","test","2020-07-09T06:45:53Z","Advisory","Adv Test","http://www.waze.com","31337","40","-76","test address","Sussex")';
-			sql.db.run(query);
-			message.channel.send(query);
-      }
-		if (message.content.includes("!2")) {
-			query='INSERT INTO closures (EventID, Desc, TimeStamp, EventType, AdvisoryType, Link, MessageID, Lat, Lon, Address, County) VALUES ("12345","test","06/05/2020 12:00 AM to 08/14/2020 12:00 AM","Scheduled","Adv Test","8243","31337","40","-76","test address","Sussex")';
-			sql.db.run(query);
-			message.channel.send(query);
-      }
+		if (message.content.startsWith("!find ")) {
+			url = message.content.replace("!find ","");
+			url = url.replace(/ /g, '%20');
+			url = "https://w-tools.org/api/SegmentFinder?find=" + url;
+			fetch(url)
+			.then(response => response.json())
+			.then(advisoryResponse => {
+				if (advisoryResponse.foundSegment == true) {
+				message.channel.send("<" + advisoryResponse.wmePermalink + ">");
+				} else {
+					message.channel.send("No Segment Found.");
+				}
+			})
+		}
       if (message.content.includes("!purge")) {
 			sql.db.run("DELETE FROM closures");
 			message.channel.send("DB Cleared!");
-      }
-		if (message.content.includes("!think")) {
-			thoughtchannel = client.channels.cache.find(channel => channel.id === "730093980628549664");
-			thoughtchannel.send("\:thinking:");
       }
       if (message.content == "!showsql") {
 			sql.db.each("SELECT * FROM closures", function(err, row) {
