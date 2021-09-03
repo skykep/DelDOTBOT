@@ -11,7 +11,7 @@ const scheduleURL = 'https://deldot.gov/json/str.json';
 var advisoryCount;
 var scheduleCount;
 
-module.exports = { 
+module.exports = {
 	Pull: function Pull(bot) {
 		//bot.DEChannel = bot.channels.cache.find(channel => channel.id === config.DE.TestChannel);
 		bot.DEChannel = bot.channels.cache.find(channel => channel.id === config.DE.ClosureChannel);
@@ -25,7 +25,7 @@ module.exports = {
 				let entry = advisoryResponse.advisories[i];
 				entry.EventType = "Advisory";
 				entry.Status = "New";
-				if (((entry.where.location.includes("LANE") === false) && (entry.where.location.includes("CLOS") === true) && (entry.where.location.includes("SHOULDER") === false) && (entry.where.location.includes("LN CLOS") === false)) || (entry.where.location.includes("RAMP CLOS") === true)) {
+				if (((entry.where.location.includes("LANE") === false) && (entry.where.location.includes("CLOS") === true) && (entry.where.location.includes("SHOULDER") === false) && (entry.where.location.includes("LN CLOS") === false)) || (entry.where.location.includes("RAMP CLOS") === true) || (entry.where.location.includes("ALL LANES CLOSED") === true)) {
 					sql.db.get(`SELECT * FROM closures WHERE EventID="${entry.id}"`, function (err,row) {
 					if (err) {
 						throw err;
@@ -53,7 +53,7 @@ module.exports = {
 				entry = advisoryResponse.advisories[i];
 				entry.EventType = "Advisory";
 				if (row.EventID == entry.id) {
-					if ((entry.where.location.includes("LANE CLOS") === false) && (entry.where.location.includes("LN CLOS") === false)) {
+					if ((entry.where.location.includes("LANE CLOS") === false) && (entry.where.location.includes("LN CLOS") === false) && (entry.where.location.includes("RIGHT LANE") === false) && (entry.where.location.includes("LEFT LANE") === false)) {
 						advisoryValid = true; //If closure is valid, do not remove from DB
 						//If timestamp and description change, send the update
 						if ((row.TimeStamp != entry.timestamp) && (row.Desc != entry.where.location)) {
@@ -85,7 +85,7 @@ module.exports = {
 			while (i < scheduleCount) {
 				let entry = scheduleResponse[i].str;
 				entry.EventType = "Scheduled";
-				if ((entry.impactType == "Closure") || ((entry.impactType == 'Restriction') && (entry.construction.toUpperCase().includes("AMP CLOS")) == true)) {
+				if (((entry.impactType == "Closure") || ((entry.impactType == 'Restriction') && ((entry.construction.toUpperCase().includes("AMP CLOS")) == true) || (entry.construction.toUpperCase().includes("ROAD CLOS")) || (entry.construction.toUpperCase().includes("CLOSURE OF ROADWAY")))) && (entry.releaseId != "-1")) {
 					sql.db.get(`SELECT * FROM closures WHERE EventID="${entry.strId}"`, function (err,row) {
 					if (err) {
 						throw err;
@@ -117,7 +117,7 @@ module.exports = {
 				i++;
 			}
 			if (!scheduleValid) {
-				bot.DEChannel.send(Embeds.DEScheduleOpen(row));
+				//bot.DEChannel.send(Embeds.DEScheduleOpen(row));
 				sql.db.run(`DELETE FROM closures WHERE EventID="${row.EventID}"`);
 				console.log(new Date().toLocaleString() + " " + row.EventID + " Deleted!");
 			}

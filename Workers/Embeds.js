@@ -13,13 +13,14 @@ module.exports = {
       } else {
 			var colorcode = "0xFF0000";
       }
+	  var updateTime = new Date(d.timestamp).toLocaleString();
 		var closeembed = {
 			"embed": {
 				color: colorcode,
-				title: `${d.Status} ${d.type.name} near ${location}`,
+				title: `${d.Status} ${d.type.name}`,
 				url: d.published.linkbackUrl,
 				author: {
-					name: 'DelDot DataFeed (Advisory Closure)',
+					name: 'DelDOT DataFeed (Advisory Closure)',
 					icon_url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
 					url: 'https://deldot.gov',
 				},
@@ -37,7 +38,7 @@ module.exports = {
 						value: `[WME Link](${wmelink}) | [Livemap Link](${lmlink}) | [App Link](${applink})`,
 					},
 				],
-				timestamp: new Date(d.timestamp).toLocaleString(),
+				timestamp: updateTime,
 				footer: {
 					text: "Event " + d.id + " updated at ",
 				},
@@ -59,13 +60,14 @@ module.exports = {
       } else {
 			var colorcode = "0xFF0000";
       }
+	  var updateTime = new Date().toLocaleString();
 		var openembed = {
 			"embed": {
 				color: 0x00ff00,
-				title: `(OPEN) - ${d.AdvisoryType} near ${location}`,
+				title: `(OPEN) - ${d.AdvisoryType}`,
 				url: d.Link,
 				author: {
-					name: 'DelDot DataFeed (Advisory Closure)',
+					name: 'DelDOT DataFeed (Advisory Closure)',
 					icon_url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
 					url: 'https://deldot.gov',
 				},
@@ -83,7 +85,7 @@ module.exports = {
 						value: `[WME Link](${wmelink}) | [Livemap Link](${lmlink}) | [App Link](${applink})`,
 					},
 				],
-				timestamp: new Date().toLocaleString(),
+				timestamp: updateTime,
 				footer: {
 					text: `Event ${d.EventID} updated at`,
 				},
@@ -106,7 +108,7 @@ module.exports = {
 				title: d.title,
 				url: releaseURL, 
 				author: {
-					name: 'DelDot DataFeed (Scheduled Closure)',
+					name: 'DelDOT DataFeed (Scheduled Closure)',
 					icon_url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
 					url: 'https://deldot.gov',
 				},
@@ -154,7 +156,7 @@ module.exports = {
 				title: d.Address,
 				url: releaseURL, 
 				author: {
-					name: 'DelDot DataFeed (Scheduled Closure)',
+					name: 'DelDOT DataFeed (Scheduled Closure)',
 					icon_url: 'https://news.delaware.gov/files/2020/03/2019-Updated-Logo-No-Shine.jpg',
 					url: 'https://deldot.gov',
 				},

@@ -20,8 +20,9 @@ module.exports = {
 			fetch(url)
 			.then(response => response.json())
 			.then(advisoryResponse => {
-				if (advisoryResponse.foundSegment == true) {
+				if (advisoryResponse.wmePermalink != null) {
 				message.channel.send("<" + advisoryResponse.wmePermalink + ">");
+				console.log(advisoryResponse);
 				} else {
 					message.channel.send("No Segment Found.");
 				}
@@ -39,7 +40,26 @@ module.exports = {
       }
       // We'll call it 'reaction' for short, but it is actually a 'MessageReaction' object
     }
-  }
+  },
+  userCommand: function userComm(client,message) {
+	 if (message.channel.type == "dm") {
+			if (message.content.startsWith("!find ")) {
+				url = message.content.replace("!find ","");
+				url = url.replace(/ /g, '%20');
+				url = "https://w-tools.org/api/SegmentFinder?find=" + url;
+				fetch(url)
+				.then(response => response.json())
+				.then(advisoryResponse => {
+					if (advisoryResponse.wmePermalink != null) {
+					message.channel.send("<" + advisoryResponse.wmePermalink + ">");
+					} else {
+						message.channel.send("No Segment Found.");
+					}
+					console.log(message.author.username  + " requested a find");
+				})
+			}
+		}
+	}
 }
   //Custom SQL Commands from Discord
 function customSQLcommand(message) {
