@@ -5,7 +5,7 @@ const config = require('../config.json');
 const returndata = require('../Workers/ReturnData.js');
 const Embeds = require('../Workers/Embeds.js');
 
-//DE specific variables & constants
+//DE specific constants & variables
 const advisoryURL = 'https://tmc.deldot.gov/json/advisory.json';
 const scheduleURL = 'https://deldot.gov/json/str.json';
 var advisoryCount;
