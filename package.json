@@ -13,7 +13,7 @@
     "discord.js": "^12.2.0",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
-    "pm2": "^4.4.0",
+    "pm2": "^5.2.0",
     "sqlite3": "^5.0.0",
     "xmlhttprequest": "^1.8.0"
   }
